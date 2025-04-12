@@ -8,24 +8,15 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git 'https://github.com/Mohammedsiddiq080/FMS2.git'
+                // Specify branch name explicitly
+                git branch: 'main', url: 'https://github.com/Mohammedsiddiq080/FMS2.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh "docker build -t ${IMAGE_NAME}:latest ."
-                }
-            }
-        }
-
-        stage('Stop & Remove Existing Container') {
-            steps {
-                script {
-                    // Stop and remove the old container if it's running
-                    sh "docker stop ${IMAGE_NAME} || true"
-                    sh "docker rm ${IMAGE_NAME} || true"
+                    sh 'docker build -t ${IMAGE_NAME}:latest .'
                 }
             }
         }
@@ -33,7 +24,9 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    sh "docker run -d -p 5000:5000 --name ${IMAGE_NAME} ${IMAGE_NAME}:latest"
+                    sh 'docker stop flask-app || true'
+                    sh 'docker rm flask-app || true'
+                    sh 'docker run -d -p 5000:5000 --name flask-app ${IMAGE_NAME}:latest'
                 }
             }
         }
@@ -41,10 +34,7 @@ pipeline {
 
     post {
         always {
-            echo '✅ Pipeline execution completed.'
-        }
-        failure {
-            echo '❌ Something went wrong during the pipeline.'
+            echo 'Pipeline execution completed.'
         }
     }
 }
