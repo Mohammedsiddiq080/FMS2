@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     options {
-        skipDefaultCheckout true // Prevents automatic SCM checkout
+        skipDefaultCheckout true
     }
 
     environment {
@@ -15,11 +15,11 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: 'main']], // Explicit branch name
+                    branches: [[name: 'main']],
                     extensions: [],
                     userRemoteConfigs: [[
                         url: 'https://github.com/Mohammedsiddiq080/FMS2.git',
-                        credentialsId: 'github-credentials' // Your GitHub credentials ID
+                        credentialsId: 'github-credentials'
                     ]]
                 ])
             }
@@ -35,13 +35,18 @@ pipeline {
 
         stage('Run Unit Tests') {
             steps {
-                sh 'docker-compose -f docker-compose.test.yml up -d --build'
-                sh 'sleep 15' // Wait for services to initialize
-                sh 'docker exec fms2-app pytest tests/unit/ -v || true'
+                script {
+                    try {
+                        sh 'docker-compose -f docker-compose.test.yml up -d --build'
+                        sleep(time: 15, unit: 'SECONDS')
+                        sh 'docker exec fms2-app pytest tests/unit/ -v || true'
+                    } finally {
+                        sh 'docker-compose -f docker-compose.test.yml down -v'
+                    }
+                }
             }
             post {
                 always {
-                    sh 'docker-compose -f docker-compose.test.yml down -v'
                     junit 'test-reports/*.xml'
                 }
             }
@@ -49,53 +54,17 @@ pipeline {
 
         stage('Integration Test') {
             steps {
-                sh 'docker-compose up -d --build'
-                sh 'sleep 20'
                 script {
                     try {
+                        sh 'docker-compose up -d --build'
+                        sleep(time: 20, unit: 'SECONDS')
                         def response = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
                         if (response != "200") {
                             error("Integration test failed - App not responding properly")
                         }
-                    } catch (Exception e) {
-                        error("Integration test failed: ${e.getMessage()}")
+                    } finally {
+                        sh 'docker-compose down -v'
                     }
-                }
-            }
-            post {
-                always {
-                    sh 'docker-compose down -v'
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            when {
-                branch 'main'
-            }
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'DOCKER_HUB_CREDENTIALS') {
-                        dockerImage.push()
-                        if (env.TAG_NAME) {
-                            dockerImage.push('latest')
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Deploy to Staging') {
-            when {
-                branch 'main'
-            }
-            steps {
-                sshagent(['staging-server-credentials']) {
-                    sh """
-                    ssh -o StrictHostKeyChecking=no user@staging-server \
-                    "docker pull yourdockerhub/fms2-app:${env.BUILD_ID} && \
-                    docker-compose -f /path/to/staging/docker-compose.yml up -d"
-                    """
                 }
             }
         }
@@ -107,21 +76,12 @@ pipeline {
             junit allowEmptyResults: true, testResults: 'test-reports/*.xml'
         }
         success {
-            slackSend(
-                color: 'good', 
-                message: "FMS2 Build #${env.BUILD_NUMBER} succeeded\n${env.BUILD_URL}"
-            )
+            // Remove or replace with your notification method
+            echo 'Build succeeded!'
         }
         failure {
-            slackSend(
-                color: 'danger', 
-                message: "FMS2 Build #${env.BUILD_NUMBER} failed!\n${env.BUILD_URL}"
-            )
-            emailext(
-                body: "Build failed: ${env.BUILD_URL}",
-                subject: "FMS2 Build #${env.BUILD_NUMBER} failed",
-                to: 'your-email@example.com'
-            )
+            // Remove or replace with your notification method
+            echo 'Build failed!'
         }
     }
 }
