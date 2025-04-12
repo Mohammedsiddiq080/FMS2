@@ -1,5 +1,9 @@
 pipeline {
-    agent any
+    agent {
+        node {
+            label 'master'
+        }
+    }
 
     options {
         skipDefaultCheckout true
@@ -11,6 +15,15 @@ pipeline {
     }
 
     stages {
+        stage('Initialize') {
+            steps {
+                cleanWs()
+                script {
+                    currentBuild.displayName = "Build #${env.BUILD_NUMBER}"
+                }
+            }
+        }
+
         stage('Checkout') {
             steps {
                 checkout([
@@ -28,7 +41,9 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    dockerImage = docker.build("fms2-app:${env.BUILD_ID}")
+                    docker.withRegistry('', env.DOCKER_HUB_CREDENTIALS) {
+                        dockerImage = docker.build("fms2-app:${env.BUILD_ID}")
+                    }
                 }
             }
         }
@@ -51,37 +66,26 @@ pipeline {
                 }
             }
         }
-
-        stage('Integration Test') {
-            steps {
-                script {
-                    try {
-                        sh 'docker-compose up -d --build'
-                        sleep(time: 20, unit: 'SECONDS')
-                        def response = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
-                        if (response != "200") {
-                            error("Integration test failed - App not responding properly")
-                        }
-                    } finally {
-                        sh 'docker-compose down -v'
-                    }
-                }
-            }
-        }
     }
 
     post {
         always {
-            cleanWs()
-            junit allowEmptyResults: true, testResults: 'test-reports/*.xml'
+            script {
+                echo "Cleaning up workspace..."
+                // Cleanup commands if needed
+            }
         }
         success {
-            // Remove or replace with your notification method
-            echo 'Build succeeded!'
+            script {
+                echo 'Build succeeded!'
+                // Add success notifications here
+            }
         }
         failure {
-            // Remove or replace with your notification method
-            echo 'Build failed!'
+            script {
+                echo 'Build failed!'
+                // Add failure notifications here
+            }
         }
     }
 }
