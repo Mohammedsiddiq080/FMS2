@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Details - Fleet Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body>
+    <div class="driver-container fade-in">
+        <h1>Driver Details</h1>
+        <form id="driverForm">
+            <label for="driver_id">Driver ID:</label>
+            <input type="text" id="driver_id" name="driver_id" placeholder="Enter Driver ID" required />
+
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name" placeholder="Enter First Name" required />
+
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name" placeholder="Enter Last Name" required />
+
+            <label for="license_number">License Number:</label>
+            <input type="text" id="license_number" name="license_number" placeholder="Enter License Number" required />
+
+            <button type="submit" class="animated-button">Save Details</button>
+        </form>
+        <div id="message" class="message"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing - Fleet Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .calculation-results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+        .calculation-results p {
+            margin: 5px 0;
+            font-weight: bold;
+        }
+        .highlight {
+            color: #4CAF50;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="billing-container">
+        <h1>Billing</h1>
+        <form id="billingForm">
+            <label for="record_id">Record ID:</label>
+            <input type="text" id="record_id" name="record_id" required>
+            <label for="vehicle_id">Vehicle ID:</label>
+            <input type="text" id="vehicle_id" name="vehicle_id" required>
+            <label for="assignment_id">Assignment ID:</label>
+            <input type="text" id="assignment_id" name="assignment_id" required>
+            <label for="km_before">KM Before:</label>
+            <input type="number" id="km_before" name="km_before" required class="calculation-input">
+            <label for="km_after">KM After:</label>
+            <input type="number" id="km_after" name="km_after" required class="calculation-input">
+            <label for="charges_per_km">Charges Per KM (₹):</label>
+            <input type="number" id="charges_per_km" name="charges_per_km" step="0.01" required class="calculation-input">
+            <label for="gst">GST (%):</label>
+            <input type="number" id="gst" name="gst" step="0.01" required class="calculation-input">
+            
+            <div class="calculation-results" id="calculationResults" style="display: none;">
+                <h3>Billing Calculation</h3>
+                <p>Distance Traveled: <span id="distance">0</span> KM</p>
+                <p>Base Fare: ₹<span id="baseFare">0.00</span></p>
+                <p>GST (<span id="gstPercentage">0</span>%): ₹<span id="gstAmount">0.00</span></p>
+                <p class="highlight">Total Amount: ₹<span id="totalAmount">0.00</span></p>
+            </div>
+            
+            <button type="submit">Save</button>
+        </form>
+    </div>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const calculationInputs = document.querySelectorAll('.calculation-input');
+            
+            calculationInputs.forEach(input => {
+                input.addEventListener('input', calculateBilling);
+            });
+            
+            function calculateBilling() {
+                const kmBefore = parseFloat(document.getElementById('km_before').value) || 0;
+                const kmAfter = parseFloat(document.getElementById('km_after').value) || 0;
+                const chargesPerKm = parseFloat(document.getElementById('charges_per_km').value) || 0;
+                const gstPercentage = parseFloat(document.getElementById('gst').value) || 0;
+                
+                if (kmBefore >= 0 && kmAfter >= 0 && kmAfter >= kmBefore) {
+                    const distance = kmAfter - kmBefore;
+                    const baseFare = distance * chargesPerKm;
+                    const gstAmount = (baseFare * gstPercentage) / 100;
+                    const totalAmount = baseFare + gstAmount;
+                    
+                    document.getElementById('distance').textContent = distance.toFixed(2);
+                    document.getElementById('baseFare').textContent = baseFare.toFixed(2);
+                    document.getElementById('gstPercentage').textContent = gstPercentage.toFixed(2);
+                    document.getElementById('gstAmount').textContent = gstAmount.toFixed(2);
+                    document.getElementById('totalAmount').textContent = totalAmount.toFixed(2);
+                    
+                    document.getElementById('calculationResults').style.display = 'block';
+                } else {
+                    document.getElementById('calculationResults').style.display = 'none';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

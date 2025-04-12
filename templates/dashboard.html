@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Fleet Management System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1 class="dashboard-title">Dashboard</h1>
+            <a href="{{ url_for('logout') }}" class="logout-button">Logout</a>
+        </div>
+        
+        <div class="cards-container">
+            <div class="card fade-in">
+                <h2>Drivers</h2>
+                <p>Manage driver details and licenses.</p>
+                <a href="/driver" class="animated-button">Go to Drivers</a>
+            </div>
+            <div class="card fade-in">
+                <h2>Fleet</h2>
+                <p>View and manage your vehicle fleet.</p>
+                <a href="/fleet" class="animated-button">Go to Fleet</a>
+            </div>
+            <div class="card fade-in">
+                <h2>Assignments</h2>
+                <p>Assign vehicles to companies.</p>
+                <a href="/assignment" class="animated-button">Go to Assignments</a>
+            </div>
+            <div class="card fade-in">
+                <h2>Billing</h2>
+                <p>Manage billing and invoices.</p>
+                <a href="/billing" class="animated-button">Go to Billing</a>
+            </div>
+            <div class="card fade-in">
+                <h2>Spares</h2>
+                <p>Track spare parts and inventory.</p>
+                <a href="/spares" class="animated-button">Go to Spares</a>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
