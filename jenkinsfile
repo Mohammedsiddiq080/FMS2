@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout true // Prevents automatic SCM checkout
+    }
+
     environment {
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
         MONGO_URI = 'mongodb://mongo:27017/FleetManagementSystem'
@@ -9,9 +13,15 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', 
-                url: 'https://github.com/Mohammedsiddiq080/FMS2.git',
-                credentialsId: 'github-credentials' // Store GitHub credentials in Jenkins
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']], // Explicit branch name
+                    extensions: [],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/Mohammedsiddiq080/FMS2.git',
+                        credentialsId: 'github-credentials' // Your GitHub credentials ID
+                    ]]
+                ])
             }
         }
 
@@ -27,12 +37,12 @@ pipeline {
             steps {
                 sh 'docker-compose -f docker-compose.test.yml up -d --build'
                 sh 'sleep 15' // Wait for services to initialize
-                sh 'docker exec fms2-app pytest tests/unit/ -v || true' // Continue even if tests fail
+                sh 'docker exec fms2-app pytest tests/unit/ -v || true'
             }
             post {
                 always {
                     sh 'docker-compose -f docker-compose.test.yml down -v'
-                    junit 'test-reports/*.xml' // Process test results
+                    junit 'test-reports/*.xml'
                 }
             }
         }
@@ -40,10 +50,9 @@ pipeline {
         stage('Integration Test') {
             steps {
                 sh 'docker-compose up -d --build'
-                sh 'sleep 20' // Wait for app to start
+                sh 'sleep 20'
                 script {
                     try {
-                        // Simple health check
                         def response = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
                         if (response != "200") {
                             error("Integration test failed - App not responding properly")
@@ -62,13 +71,12 @@ pipeline {
 
         stage('Push to Docker Hub') {
             when {
-                branch 'main' // Only push for main branch
+                branch 'main'
             }
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'DOCKER_HUB_CREDENTIALS') {
                         dockerImage.push()
-                        // Only push as latest if it's a tagged release
                         if (env.TAG_NAME) {
                             dockerImage.push('latest')
                         }
@@ -96,21 +104,24 @@ pipeline {
     post {
         always {
             cleanWs()
-            script {
-                // Archive test results
-                junit allowEmptyResults: true, testResults: 'test-reports/*.xml'
-            }
+            junit allowEmptyResults: true, testResults: 'test-reports/*.xml'
         }
         success {
-            slackSend(color: 'good', 
-                     message: "FMS2 Build #${env.BUILD_NUMBER} succeeded\n${env.BUILD_URL}")
+            slackSend(
+                color: 'good', 
+                message: "FMS2 Build #${env.BUILD_NUMBER} succeeded\n${env.BUILD_URL}"
+            )
         }
         failure {
-            slackSend(color: 'danger', 
-                     message: "FMS2 Build #${env.BUILD_NUMBER} failed!\n${env.BUILD_URL}")
-            emailext body: "Build failed: ${env.BUILD_URL}",
-                     subject: "FMS2 Build #${env.BUILD_NUMBER} failed",
-                     to: 'your-email@example.com'
+            slackSend(
+                color: 'danger', 
+                message: "FMS2 Build #${env.BUILD_NUMBER} failed!\n${env.BUILD_URL}"
+            )
+            emailext(
+                body: "Build failed: ${env.BUILD_URL}",
+                subject: "FMS2 Build #${env.BUILD_NUMBER} failed",
+                to: 'your-email@example.com'
+            )
         }
     }
 }
