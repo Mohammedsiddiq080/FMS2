@@ -2,35 +2,92 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "flask-app"
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
+        MONGO_URI = 'mongodb://mongo:27017/FleetManagementSystem'
     }
 
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
-                // Specify branch name explicitly
-                git branch: 'main', url: 'https://github.com/Mohammedsiddiq080/FMS2.git'
+                git branch: 'main', 
+                url: 'https://github.com/Mohammedsiddiq080/FMS2.git',
+                credentialsId: 'github-credentials' // Store GitHub credentials in Jenkins
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Build Docker image for the Flask app
-                    sh 'docker build -t ${IMAGE_NAME}:latest .'
+                    dockerImage = docker.build("fms2-app:${env.BUILD_ID}")
                 }
             }
         }
 
-        stage('Run Docker Container') {
+        stage('Run Unit Tests') {
+            steps {
+                sh 'docker-compose -f docker-compose.test.yml up -d --build'
+                sh 'sleep 15' // Wait for services to initialize
+                sh 'docker exec fms2-app pytest tests/unit/ -v || true' // Continue even if tests fail
+            }
+            post {
+                always {
+                    sh 'docker-compose -f docker-compose.test.yml down -v'
+                    junit 'test-reports/*.xml' // Process test results
+                }
+            }
+        }
+
+        stage('Integration Test') {
+            steps {
+                sh 'docker-compose up -d --build'
+                sh 'sleep 20' // Wait for app to start
+                script {
+                    try {
+                        // Simple health check
+                        def response = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
+                        if (response != "200") {
+                            error("Integration test failed - App not responding properly")
+                        }
+                    } catch (Exception e) {
+                        error("Integration test failed: ${e.getMessage()}")
+                    }
+                }
+            }
+            post {
+                always {
+                    sh 'docker-compose down -v'
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            when {
+                branch 'main' // Only push for main branch
+            }
             steps {
                 script {
-                    // Stop and remove any existing container with the same name
-                    sh 'docker stop flask-app || true'
-                    sh 'docker rm flask-app || true'
+                    docker.withRegistry('https://registry.hub.docker.com', 'DOCKER_HUB_CREDENTIALS') {
+                        dockerImage.push()
+                        // Only push as latest if it's a tagged release
+                        if (env.TAG_NAME) {
+                            dockerImage.push('latest')
+                        }
+                    }
+                }
+            }
+        }
 
-                    // Run the Flask app in a new container
-                    sh 'docker run -d -p 5000:5000 --name flask-app ${IMAGE_NAME}:latest'
+        stage('Deploy to Staging') {
+            when {
+                branch 'main'
+            }
+            steps {
+                sshagent(['staging-server-credentials']) {
+                    sh """
+                    ssh -o StrictHostKeyChecking=no user@staging-server \
+                    "docker pull yourdockerhub/fms2-app:${env.BUILD_ID} && \
+                    docker-compose -f /path/to/staging/docker-compose.yml up -d"
+                    """
                 }
             }
         }
@@ -38,7 +95,22 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline execution completed.'
+            cleanWs()
+            script {
+                // Archive test results
+                junit allowEmptyResults: true, testResults: 'test-reports/*.xml'
+            }
+        }
+        success {
+            slackSend(color: 'good', 
+                     message: "FMS2 Build #${env.BUILD_NUMBER} succeeded\n${env.BUILD_URL}")
+        }
+        failure {
+            slackSend(color: 'danger', 
+                     message: "FMS2 Build #${env.BUILD_NUMBER} failed!\n${env.BUILD_URL}")
+            emailext body: "Build failed: ${env.BUILD_URL}",
+                     subject: "FMS2 Build #${env.BUILD_NUMBER} failed",
+                     to: 'your-email@example.com'
         }
     }
 }
