@@ -2,69 +2,44 @@ pipeline {
     agent any
 
     environment {
-        // Set Python and Redis paths
+        // Use python3 by default
         PATH = "${env.PATH}:/usr/local/bin"
-        REDIS_HOST = 'localhost'
-        REDIS_PORT = '6379'
-        FLASK_APP = 'app.py'
     }
 
     stages {
         stage('Checkout SCM') {
             steps {
-                checkout scm
+                git url: 'https://github.com/Mohammedsiddiq080/FMS2.git', branch: 'main'
             }
         }
 
-        stage('Setup Environment') {
+        stage('Setup Python Environment') {
             steps {
                 script {
                     // Verify Python is installed
-                    def pythonVersion = sh(script: 'python3 --version', returnStatus: true)
-                    if (pythonVersion != 0) {
+                    def pythonVersion = sh(script: 'python3 --version || echo "Python3 not found"', returnStdout: true).trim()
+                    if (pythonVersion.contains("not found")) {
                         error("Python 3 is not installed. Please install Python 3 on the Jenkins agent.")
                     }
-                    echo "Using Python: ${sh(script: 'python3 --version', returnStdout: true).trim()}"
+                    echo "Using ${pythonVersion}"
 
-                    // Verify Redis is installed and running
-                    def redisStatus = sh(script: 'redis-cli ping', returnStatus: true)
-                    if (redisStatus != 0) {
-                        echo "Starting Redis server..."
-                        sh 'sudo service redis-server start || redis-server --daemonize yes'
-                        sleep(time: 5, unit: 'SECONDS')
-                    }
-                    echo "Redis status: ${sh(script: 'redis-cli ping', returnStdout: true).trim()}"
+                    // Create virtual environment
+                    sh 'python3 -m venv venv'
                 }
-            }
-        }
-
-        stage('Create Virtual Environment') {
-            steps {
-                sh 'python3 -m venv venv'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh '''
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    [ -f requirements.txt ] && pip install -r requirements.txt
-                    pip install redis flask
-                '''
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh '''
-                    . venv/bin/activate
-                    python -m pytest tests/ -v || true
-                '''
-            }
-            post {
-                always {
-                    junit 'test-reports/*.xml'
+                script {
+                    // Activate venv and install dependencies
+                    sh '''
+                        . venv/bin/activate
+                        pip install --upgrade pip
+                        if [ -f requirements.txt ]; then
+                            pip install -r requirements.txt
+                        fi
+                    '''
                 }
             }
         }
@@ -72,22 +47,11 @@ pipeline {
         stage('Run Application') {
             steps {
                 script {
-                    // Start Redis if not running
-                    sh 'redis-server --daemonize yes || true'
-                    
-                    // Run Flask application in background
+                    // Run your Python application
                     sh '''
                         . venv/bin/activate
-                        nohup python -m flask run --host=0.0.0.0 --port=5000 > flask.log 2>&1 &
-                        echo $! > flask.pid
+                        python app.py &
                     '''
-                    
-                    // Verify application is running
-                    sleep(time: 10, unit: 'SECONDS')
-                    def appStatus = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
-                    if (appStatus != "200") {
-                        error("Application failed to start. Status code: ${appStatus}")
-                    }
                 }
             }
         }
@@ -95,25 +59,17 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning up processes and environment...'
+            echo 'Cleaning up...'
             sh '''
-                # Stop Flask application
-                [ -f flask.pid ] && kill -9 $(cat flask.pid) || true
-                
-                # Stop Redis server
-                redis-cli shutdown || true
-                
-                # Remove temporary files
-                rm -rf venv flask.pid flask.log || true
+                pkill -f app.py || true
+                rm -rf venv || true
             '''
-            cleanWs()
         }
         success {
             echo 'Pipeline completed successfully!'
         }
         failure {
             echo 'Pipeline failed!'
-            archiveArtifacts artifacts: 'flask.log', allowEmptyArchive: true
         }
     }
 }
