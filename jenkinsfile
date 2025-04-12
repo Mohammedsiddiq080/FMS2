@@ -1,8 +1,11 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3.10' // Use official Python Docker image
+        }
+    }
 
     environment {
-        // Use python3 by default
         PATH = "${env.PATH}:/usr/local/bin"
     }
 
@@ -16,15 +19,8 @@ pipeline {
         stage('Setup Python Environment') {
             steps {
                 script {
-                    // Verify Python is installed
-                    def pythonVersion = sh(script: 'python3 --version || echo "Python3 not found"', returnStdout: true).trim()
-                    if (pythonVersion.contains("not found")) {
-                        error("Python 3 is not installed. Please install Python 3 on the Jenkins agent.")
-                    }
-                    echo "Using ${pythonVersion}"
-
-                    // Create virtual environment
-                    sh 'python3 -m venv venv'
+                    sh 'python --version'
+                    sh 'python -m venv venv'
                 }
             }
         }
@@ -32,7 +28,6 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    // Activate venv and install dependencies
                     sh '''
                         . venv/bin/activate
                         pip install --upgrade pip
@@ -47,7 +42,6 @@ pipeline {
         stage('Run Application') {
             steps {
                 script {
-                    // Run your Python application
                     sh '''
                         . venv/bin/activate
                         python app.py &
