@@ -1,90 +1,56 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3.9-slim'  // Uses official Python image to ensure environment consistency
-            args '-p 5000:5000'      // Maps port if your app runs on 5000
-        }
-    }
+    agent any
 
     environment {
         VENV_PATH = "venv"
-        FLASK_APP = "app.py"         // Standard Flask environment variable
     }
 
     stages {
         stage('Checkout SCM') {
             steps {
-                checkout([           // Modern syntax for checkout
-                    $class: 'GitSCM',
-                    branches: [[name: 'main']],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Mohammedsiddiq080/FMS2.git'
-                    ]]
-                ])
+                git url: 'https://github.com/Mohammedsiddiq080/FMS2.git', branch: 'main'
             }
         }
 
-        stage('Setup Environment') {
+        stage('Setup Python Environment') {
             steps {
-                sh """
-                    python --version
-                    python -m venv ${VENV_PATH}
-                """
+                sh '''
+                    which python3 || echo "Python3 is not installed!"
+                    python3 --version
+                    python3 -m venv ${VENV_PATH}
+                '''
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh """
+                sh '''
                     . ${VENV_PATH}/bin/activate
                     pip install --upgrade pip
-                    [ -f requirements.txt ] && pip install -r requirements.txt
-                    pip install gunicorn  # Recommended for production
-                """
-            }
-        }
-
-        stage('Run Tests') {          // Added testing stage
-            steps {
-                sh """
-                    . ${VENV_PATH}/bin/activate
-                    [ -f requirements-test.txt ] && pip install -r requirements-test.txt
-                    python -m pytest tests/ || true  # Continue even if tests fail
-                """
-            }
-            post {
-                always {
-                    junit 'test-reports/*.xml'  // Publish test results
-                }
+                    if [ -f requirements.txt ]; then
+                        pip install -r requirements.txt
+                    fi
+                '''
             }
         }
 
         stage('Run Application') {
             steps {
-                sh """
+                sh '''
                     . ${VENV_PATH}/bin/activate
-                    gunicorn --bind :5000 --workers 1 --timeout 120 app:app &
-                    echo $! > gunicorn.pid  # Store PID for cleanup
-                """
+                    python app.py &
+                '''
             }
         }
     }
 
     post {
         always {
-            echo 'Pipeline completed - cleaning up'
+            echo 'Cleaning up...'
             sh '''
-                [ -f gunicorn.pid ] && kill $(cat gunicorn.pid) || true
-                rm -rf ${VENV_PATH} gunicorn.pid
+                pkill -f app.py || true
+                rm -rf ${VENV_PATH}
             '''
-            cleanWs()  // Clean Jenkins workspace
-        }
-        success {
-            echo 'Pipeline succeeded!'
-        }
-        failure {
-            echo 'Pipeline failed!'
-            archiveArtifacts artifacts: '**/logs/*.log', allowEmptyArchive: true
         }
     }
 }
