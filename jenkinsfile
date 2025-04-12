@@ -1,64 +1,66 @@
 pipeline {
-    agent {
-        node {
-            label 'master'
-        }
-    }
-
-    options {
-        skipDefaultCheckout true
-    }
+    agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
-        MONGO_URI = 'mongodb://mongo:27017/FleetManagementSystem'
+        // Set Python and Redis paths
+        PATH = "${env.PATH}:/usr/local/bin"
+        REDIS_HOST = 'localhost'
+        REDIS_PORT = '6379'
+        FLASK_APP = 'app.py'
     }
 
     stages {
-        stage('Initialize') {
+        stage('Checkout SCM') {
             steps {
-                cleanWs()
-                script {
-                    currentBuild.displayName = "Build #${env.BUILD_NUMBER}"
-                }
+                checkout scm
             }
         }
 
-        stage('Checkout') {
-            steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: 'main']],
-                    extensions: [],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/Mohammedsiddiq080/FMS2.git',
-                        credentialsId: 'github-credentials'
-                    ]]
-                ])
-            }
-        }
-
-        stage('Build Docker Image') {
+        stage('Setup Environment') {
             steps {
                 script {
-                    docker.withRegistry('', env.DOCKER_HUB_CREDENTIALS) {
-                        dockerImage = docker.build("fms2-app:${env.BUILD_ID}")
+                    // Verify Python is installed
+                    def pythonVersion = sh(script: 'python3 --version', returnStatus: true)
+                    if (pythonVersion != 0) {
+                        error("Python 3 is not installed. Please install Python 3 on the Jenkins agent.")
                     }
+                    echo "Using Python: ${sh(script: 'python3 --version', returnStdout: true).trim()}"
+
+                    // Verify Redis is installed and running
+                    def redisStatus = sh(script: 'redis-cli ping', returnStatus: true)
+                    if (redisStatus != 0) {
+                        echo "Starting Redis server..."
+                        sh 'sudo service redis-server start || redis-server --daemonize yes'
+                        sleep(time: 5, unit: 'SECONDS')
+                    }
+                    echo "Redis status: ${sh(script: 'redis-cli ping', returnStdout: true).trim()}"
                 }
             }
         }
 
-        stage('Run Unit Tests') {
+        stage('Create Virtual Environment') {
             steps {
-                script {
-                    try {
-                        sh 'docker-compose -f docker-compose.test.yml up -d --build'
-                        sleep(time: 15, unit: 'SECONDS')
-                        sh 'docker exec fms2-app pytest tests/unit/ -v || true'
-                    } finally {
-                        sh 'docker-compose -f docker-compose.test.yml down -v'
-                    }
-                }
+                sh 'python3 -m venv venv'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    pip install --upgrade pip
+                    [ -f requirements.txt ] && pip install -r requirements.txt
+                    pip install redis flask
+                '''
+            }
+        }
+
+        stage('Run Tests') {
+            steps {
+                sh '''
+                    . venv/bin/activate
+                    python -m pytest tests/ -v || true
+                '''
             }
             post {
                 always {
@@ -66,26 +68,52 @@ pipeline {
                 }
             }
         }
+
+        stage('Run Application') {
+            steps {
+                script {
+                    // Start Redis if not running
+                    sh 'redis-server --daemonize yes || true'
+                    
+                    // Run Flask application in background
+                    sh '''
+                        . venv/bin/activate
+                        nohup python -m flask run --host=0.0.0.0 --port=5000 > flask.log 2>&1 &
+                        echo $! > flask.pid
+                    '''
+                    
+                    // Verify application is running
+                    sleep(time: 10, unit: 'SECONDS')
+                    def appStatus = sh(script: 'curl -s -o /dev/null -w "%{http_code}" http://localhost:5000', returnStdout: true).trim()
+                    if (appStatus != "200") {
+                        error("Application failed to start. Status code: ${appStatus}")
+                    }
+                }
+            }
+        }
     }
 
     post {
         always {
-            script {
-                echo "Cleaning up workspace..."
-                // Cleanup commands if needed
-            }
+            echo 'Cleaning up processes and environment...'
+            sh '''
+                # Stop Flask application
+                [ -f flask.pid ] && kill -9 $(cat flask.pid) || true
+                
+                # Stop Redis server
+                redis-cli shutdown || true
+                
+                # Remove temporary files
+                rm -rf venv flask.pid flask.log || true
+            '''
+            cleanWs()
         }
         success {
-            script {
-                echo 'Build succeeded!'
-                // Add success notifications here
-            }
+            echo 'Pipeline completed successfully!'
         }
         failure {
-            script {
-                echo 'Build failed!'
-                // Add failure notifications here
-            }
+            echo 'Pipeline failed!'
+            archiveArtifacts artifacts: 'flask.log', allowEmptyArchive: true
         }
     }
 }
