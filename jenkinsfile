@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "flask-app"
+        DOCKER_REGISTRY = "your-docker-registry" // Optional if pushing to a registry
+    }
+
+    stages {
+        stage('Clone Repository') {
+            steps {
+                // Clone your repository
+                git 'https://your-repo-url.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Build the Docker image
+                    sh 'docker build -t ${IMAGE_NAME} .'
+                }
+            }
+        }
+
+        stage('Run Docker Container') {
+            steps {
+                script {
+                    // Stop and remove any existing container
+                    sh 'docker stop flask-app || true && docker rm flask-app || true'
+
+                    // Run the new container
+                    sh 'docker run -d -p 5000:5000 --name flask-app ${IMAGE_NAME}'
+                }
+            }
+        }
+
+        stage('Push to Docker Registry') {
+            when {
+                expression { return env.DOCKER_REGISTRY != null }
+            }
+            steps {
+                script {
+                    // Tag and push the image to a Docker registry
+                    sh 'docker tag ${IMAGE_NAME} ${DOCKER_REGISTRY}/${IMAGE_NAME}'
+                    sh 'docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+    }
+}
