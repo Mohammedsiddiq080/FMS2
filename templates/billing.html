@@ -21,6 +21,9 @@
             color: #4CAF50;
             font-size: 1.1em;
         }
+        .readonly-field {
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
@@ -28,7 +31,7 @@
         <h1>Billing</h1>
         <form id="billingForm">
             <label for="record_id">Record ID:</label>
-            <input type="text" id="record_id" name="record_id" required>
+            <input type="text" id="record_id" name="record_id" class="readonly-field" value="BILL001 (auto-generated)" readonly>
             <label for="vehicle_id">Vehicle ID:</label>
             <input type="text" id="vehicle_id" name="vehicle_id" required>
             <label for="assignment_id">Assignment ID:</label>
