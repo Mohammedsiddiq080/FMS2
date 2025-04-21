@@ -1,307 +1,303 @@
-/* General Styles */
-:root {
-    --primary-color: #2c3e50;
-    --secondary-color: #3498db;
-    --accent-color: #e74c3c;
-    --light-color: #ecf0f1;
-    --dark-color: #2c3e50;
-    --success-color: #27ae60;
-    --warning-color: #f39c12;
-    --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
+/* General Reset */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+:root {
+    --primary-color: #006600;
+    --secondary-color: #00aa00;
+    --background-color: #f8fff8;
+    --font-color: #004d00;
+    --border-radius: 8px;
+    --light-green: #e8fbe8;
+    --border-color: #a3d9a5;
+    --hover-green: #007f00;
 }
 
 body {
-    font-family: var(--font-main);
-    background-color: #f5f5f5;
-    color: var(--dark-color);
-    background-image: url('https://images.unsplash.com/photo-1503376780353-7e6692767b70?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-blend-mode: overlay;
-    background-color: rgba(245, 245, 245, 0.9);
-    min-height: 100vh;
+    background-color: var(--background-color);
+    color: var(--font-color);
+    padding: 20px;
 }
 
-h1, h2, h3 {
+/* Headers and Containers */
+h1, h2 {
     color: var(--primary-color);
-    margin-bottom: 1rem;
+    margin-bottom: 20px;
 }
 
-/* Container Styles */
-.login-container,
-.dashboard-container,
+form {
+    background-color: #ffffff;
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    max-width: 600px;
+    margin: auto;
+}
+
+label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--light-green);
+    color: var(--font-color);
+}
+
+button {
+    background-color: var(--secondary-color);
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-weight: 600;
+}
+
+button:hover {
+    background-color: var(--hover-green);
+}
+
+/* Login Page */
+.login-container {
+    max-width: 400px;
+    margin: auto;
+    margin-top: 100px;
+    padding: 30px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+/* Dashboard */
+.dashboard-container {
+    max-width: 900px;
+    margin: auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.logout-button {
+    background-color: #ff6666;
+    padding: 8px 12px;
+    border-radius: 4px;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.logout-button:hover {
+    background-color: #cc0000;
+}
+
+.cards-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.card {
+    background-color: var(--light-green);
+    padding: 20px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    flex: 1 1 250px;
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: scale(1.02);
+}
+
+.animated-button {
+    display: inline-block;
+    margin-top: 10px;
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 8px 14px;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.animated-button:hover {
+    background-color: var(--hover-green);
+}
+
+/* Form-specific containers */
 .driver-container,
 .fleet-container,
 .assignment-container,
 .billing-container,
 .spares-container {
-    max-width: 1000px;
-    margin: 2rem auto;
-    padding: 2rem;
+    max-width: 700px;
+    margin: 40px auto;
     background-color: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Assignment Page Specific Styles */
+.assignment-container {
+    max-width: 700px;
+    margin: 40px auto;
+    background-color: #ffffff;
+    padding: 30px;
+    border: 1px solid var(--border-color);
     border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    border-top: 5px solid var(--secondary-color);
+    box-shadow: 0 0 10px rgba(0, 100, 0, 0.1);
+}
+
+.assignment-container h1 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 25px;
+    font-size: 28px;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
 }
 
 /* Form Styles */
-form {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
+#assignmentForm {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
 
-label {
-    display: block;
-    margin-bottom: 0.5rem;
+#assignmentForm label {
+    color: var(--font-color);
     font-weight: 600;
-    color: var(--primary-color);
+    margin-top: 15px;
+    font-size: 14px;
 }
 
-input {
-    width: 100%;
-    padding: 0.75rem;
-    border: 1px solid #ddd;
+/* ID Display */
+#assignment_id_display {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
+    padding: 5px 0;
+}
+
+/* Input Fields */
+#assignmentForm input[type="text"],
+#assignmentForm input[type="date"],
+#assignmentForm select {
+    background-color: var(--light-green);
+    border: 1px solid var(--border-color);
+    color: var(--font-color);
+    padding: 10px;
     border-radius: 5px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    background-color: #f9f9f9;
+    transition: border-color 0.3s ease;
 }
 
-input:focus {
+#assignmentForm input[type="text"]:focus,
+#assignmentForm input[type="date"]:focus,
+#assignmentForm select:focus {
     outline: none;
     border-color: var(--secondary-color);
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    box-shadow: 0 0 0 2px rgba(0, 170, 0, 0.2);
 }
 
-button {
+/* Button */
+#assignmentForm button {
     background-color: var(--secondary-color);
     color: white;
     border: none;
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
-    border-radius: 5px;
+    padding: 12px;
+    border-radius: var(--border-radius);
+    font-size: 16px;
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-weight: 600;
-    grid-column: span 2;
-    margin-top: 1rem;
-}
-
-button:hover {
-    background-color: #2980b9;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-/* Dashboard Specific Styles */
-.dashboard-title {
-    text-align: center;
-    margin-bottom: 2rem;
-    color: var(--primary-color);
-    font-size: 2.5rem;
-}
-
-.cards-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-}
-
-.card {
-    background-color: white;
-    padding: 1.5rem;
-    border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    border-top: 3px solid var(--secondary-color);
-    text-align: center;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
-.card h2 {
-    color: var(--secondary-color);
-    margin-bottom: 0.5rem;
-}
-
-.card p {
-    color: #666;
-    margin-bottom: 1.5rem;
-}
-
-/* Billing Calculation Styles */
-.calculation-results {
+    transition: background-color 0.3s ease;
     margin-top: 20px;
-    padding: 1.5rem;
-    background-color: var(--light-color);
-    border-radius: 5px;
-    border-left: 4px solid var(--success-color);
-    grid-column: span 2;
-    animation: fadeIn 0.5s ease-in-out;
 }
 
-.calculation-results h3 {
+#assignmentForm button:hover {
+    background-color: var(--hover-green);
+}
+
+/* ID Label */
+.id-label {
+    background-color: var(--light-green);
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
     color: var(--primary-color);
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
-}
-
-.calculation-results p {
-    margin: 0.75rem 0;
-    font-weight: 600;
-    color: var(--dark-color);
-    display: flex;
-    justify-content: space-between;
-}
-
-.calculation-results p span {
-    font-weight: normal;
-}
-
-.highlight {
-    color: var(--success-color);
-    font-size: 1.1em;
-    padding-top: 0.5rem;
-    border-top: 1px solid #ddd;
-    margin-top: 0.5rem;
-}
-
-/* Animated Button */
-.animated-button {
+    font-weight: bold;
+    margin-bottom: 15px;
     display: inline-block;
-    padding: 0.75rem 1.5rem;
-    background-color: var(--secondary-color);
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
+    width: 100%;
 }
 
-.animated-button:hover {
-    background-color: var(--primary-color);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+/* Date Inputs Container */
+.date-inputs {
+    display: flex;
+    gap: 15px;
+}
+
+.date-inputs > div {
+    flex: 1;
+}
+
+/* Messages */
+.message {
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 5px;
+    display: none;
+}
+
+.message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
 }
 
 /* Animations */
 .fade-in {
-    animation: fadeIn 0.5s ease-in-out;
+    animation: fadeIn 0.8s ease-in;
 }
 
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* Message Styles */
-.message {
-    padding: 1rem;
-    margin-top: 1rem;
-    border-radius: 5px;
-    text-align: center;
-    font-weight: 600;
-}
-
-.message.success {
-    background-color: rgba(39, 174, 96, 0.2);
-    color: var(--success-color);
-}
-
-.message.error {
-    background-color: rgba(231, 76, 60, 0.2);
-    color: var(--accent-color);
-}
-
-/* Responsive Design */
+/* Responsive adjustments */
 @media (max-width: 768px) {
-    form {
-        grid-template-columns: 1fr;
+    .assignment-container {
+        padding: 20px;
+        margin: 20px;
     }
-    
-    button {
-        grid-column: span 1;
+
+    .date-inputs {
+        flex-direction: column;
+        gap: 10px;
     }
-    
-    .cards-container {
-        grid-template-columns: 1fr;
-    }
-    
-    .calculation-results {
-        grid-column: span 1;
-    }
-}
-
-/* Vehicle Theme Elements */
-.login-container::before,
-.dashboard-container::before {
-    content: "";
-    display: block;
-    height: 5px;
-    background: linear-gradient(90deg, #3498db, #e74c3c, #f39c12, #27ae60);
-    border-radius: 5px 5px 0 0;
-    margin: -2rem -2rem 2rem -2rem;
-}
-
-.card:nth-child(1) {
-    border-top-color: #3498db;
-}
-
-.card:nth-child(2) {
-    border-top-color: #e74c3c;
-}
-
-.card:nth-child(3) {
-    border-top-color: #f39c12;
-}
-
-.card:nth-child(4) {
-    border-top-color: #27ae60;
-}
-
-.card:nth-child(5) {
-    border-top-color: #9b59b6;
-}
-
-/* Dashboard Header */
-.dashboard-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-}
-
-.logout-button {
-    padding: 0.5rem 1rem;
-    background-color: var(--accent-color);
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.logout-button:hover {
-    background-color: #c0392b;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
