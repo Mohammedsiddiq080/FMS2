@@ -8,13 +8,11 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = 'your_very_secret_key_here'
 
-# Hardcoded admin credentials
 ADMIN_CREDENTIALS = {
     'username': 'admin',
     'password': 'admin123'
 }
 
-# MongoDB connection
 client = MongoClient('mongodb://localhost:27017/')
 db = client['FleetManagementSystem']
 drivers_collection = db['drivers']
@@ -34,7 +32,7 @@ class JSONEncoder(json.JSONEncoder):
 app.json_encoder = JSONEncoder
 
 def login_required(f):
-    @wraps(f)  # Preserve function name and properties
+    @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'logged_in' not in session:
             return jsonify({'success': False, 'message': 'Please login first'}), 401
@@ -51,20 +49,13 @@ def index():
 def login():
     username = request.form.get('username')
     password = request.form.get('password')
-    
+
     if username == ADMIN_CREDENTIALS['username'] and password == ADMIN_CREDENTIALS['password']:
         session['logged_in'] = True
         session['username'] = username
-        return jsonify({
-            'success': True, 
-            'redirect': url_for('dashboard'),
-            'message': 'Login successful'
-        })
-    
-    return jsonify({
-        'success': False, 
-        'message': 'Invalid username or password'
-    })
+        return jsonify({'success': True, 'redirect': url_for('dashboard'), 'message': 'Login successful'})
+
+    return jsonify({'success': False, 'message': 'Invalid username or password'})
 
 @app.route('/logout')
 def logout():
@@ -88,15 +79,24 @@ def dashboard():
 def driver():
     if request.method == 'POST':
         try:
+            last_driver = drivers_collection.find_one(sort=[("created_at", -1)])
+            if last_driver and 'driver_id' in last_driver:
+                last_id_num = int(last_driver['driver_id'].replace("DRIVER", ""))
+                new_id_num = last_id_num + 1
+            else:
+                new_id_num = 1
+            new_driver_id = f"DRIVER{new_id_num:03d}"
+
             driver_data = {
-                'driver_id': request.form.get('driver_id'),
+                'driver_id': new_driver_id,
                 'first_name': request.form.get('first_name'),
                 'last_name': request.form.get('last_name'),
                 'license_number': request.form.get('license_number'),
                 'created_at': datetime.now()
             }
+
             drivers_collection.insert_one(driver_data)
-            return jsonify({'success': True, 'message': 'Driver details saved successfully'})
+            return jsonify({'success': True, 'message': 'Driver saved successfully', 'driver_id': new_driver_id})
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)})
     return render_template('driver.html')
@@ -120,6 +120,41 @@ def fleet():
             return jsonify({'success': False, 'message': str(e)})
     return render_template('fleet.html')
 
+@app.route('/get-next-assignment-id')
+@login_required
+def get_next_assignment_id():
+    try:
+        last_assignment = assignments_collection.find_one(sort=[("created_at", -1)])
+        if last_assignment and 'assignment_id' in last_assignment:
+            last_id_num = int(last_assignment['assignment_id'].replace("ASSIGN", ""))
+            new_id_num = last_id_num + 1
+        else:
+            new_id_num = 1
+        new_assignment_id = f"ASSIGN{new_id_num:03d}"
+        return jsonify({'success': True, 'assignment_id': new_assignment_id})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/get-available-vehicles')
+@login_required
+def get_available_vehicles():
+    try:
+        assigned_vehicle_ids = [a['vehicle_id'] for a in assignments_collection.find(
+            {'end_date': {'$gte': datetime.now()}},
+            {'vehicle_id': 1}
+        )]
+        
+        available_vehicles = list(fleet_collection.find(
+            {'vehicle_id': {'$nin': assigned_vehicle_ids}}
+        ))
+        
+        return jsonify({
+            'success': True,
+            'vehicles': available_vehicles
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 @app.route('/assignment', methods=['GET', 'POST'])
 @login_required
 def assignment():
@@ -129,15 +164,23 @@ def assignment():
                 'assignment_id': request.form.get('assignment_id'),
                 'company_name': request.form.get('company_name'),
                 'vehicle_id': request.form.get('vehicle_id'),
+                'driver_id': request.form.get('driver_id'),
                 'start_date': datetime.strptime(request.form.get('start_date'), '%Y-%m-%d'),
                 'end_date': datetime.strptime(request.form.get('end_date'), '%Y-%m-%d'),
+                'status': 'active',
                 'created_at': datetime.now()
             }
             assignments_collection.insert_one(assignment_data)
-            return jsonify({'success': True, 'message': 'Assignment saved successfully'})
+            return jsonify({
+                'success': True, 
+                'message': 'Assignment saved successfully',
+                'assignment_id': assignment_data['assignment_id']
+            })
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)})
-    return render_template('assignment.html')
+    
+    drivers = list(drivers_collection.find({}, {'driver_id': 1, 'first_name': 1, 'last_name': 1}))
+    return render_template('assignment.html', drivers=drivers)
 
 @app.route('/billing', methods=['GET', 'POST'])
 @login_required
