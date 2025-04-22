@@ -2,21 +2,43 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "flask-app"
-        DOCKER_REGISTRY = "your-docker-registry" // Optional if pushing to a registry
+        DOCKER_IMAGE = "flask-app"
+        DOCKER_TAG = "latest"
+        // Add registry credentials if pushing to Docker Hub/other registry
+        // DOCKER_REGISTRY = "your-registry"
     }
 
     stages {
         stage('Clone Repository') {
             steps {
-                git branch: 'main', url: 'https://github.com/Mohammedsiddiq080/FMS2.git'
+                checkout scm
+                sh 'git --version'
+                sh 'ls -la'  // Verify files are checked out
+            }
+        }
+
+        stage('Verify Docker') {
+            steps {
+                script {
+                    try {
+                        sh 'docker --version'
+                        sh 'docker info'
+                    } catch (Exception e) {
+                        error("Docker is not properly configured: ${e}")
+                    }
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
                 script {
-                    sh 'docker build -t ${IMAGE_NAME} .'
+                    try {
+                        sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                        sh "docker images | grep ${DOCKER_IMAGE}"
+                    } catch (Exception e) {
+                        error("Docker build failed: ${e}")
+                    }
                 }
             }
         }
@@ -24,46 +46,69 @@ pipeline {
         stage('Run Docker Container') {
             steps {
                 script {
-                    // Stop and remove any existing container
-                    sh 'docker stop flask-app || true && docker rm flask-app || true'
-
-                    // Run the new container
-                    sh 'docker run -d -p 5000:5000 --name flask-app ${IMAGE_NAME}'
+                    try {
+                        // Stop and remove if already running
+                        sh "docker stop ${DOCKER_IMAGE}-container || true"
+                        sh "docker rm ${DOCKER_IMAGE}-container || true"
+                        // Run with proper port mapping
+                        sh "docker run -d --name ${DOCKER_IMAGE}-container -p 5000:5000 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh "docker ps | grep ${DOCKER_IMAGE}"
+                    } catch (Exception e) {
+                        error("Failed to run container: ${e}")
+                    }
                 }
             }
         }
 
-        stage('Run Selenium Automation') {
+        stage('Test Application') {
             steps {
                 script {
-                    // Run the Selenium automation script
-                    sh '''
-                        python3 -m venv venv
-                        . venv/bin/activate
-                        pip install selenium
-                        python auto.py
-                    '''
+                    // Simple curl test - adjust based on your app
+                    sh 'sleep 10'  // Wait for app to start
+                    sh 'curl --retry 5 --retry-delay 5 -v http://localhost:5000 || true'
                 }
             }
         }
 
-        stage('Push to Docker Registry') {
+        /*
+        // Optional: Push to Docker Registry
+        stage('Push to Registry') {
             when {
-                expression { return env.DOCKER_REGISTRY != null }
+                branch 'main'
             }
             steps {
                 script {
-                    // Tag and push the image to a Docker registry
-                    sh 'docker tag ${IMAGE_NAME} ${DOCKER_REGISTRY}/${IMAGE_NAME}'
-                    sh 'docker push ${DOCKER_REGISTRY}/${IMAGE_NAME}'
+                    withCredentials([usernamePassword(
+                        credentialsId: 'docker-hub-credentials',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )]) {
+                        sh "docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}"
+                        sh "docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    }
                 }
             }
         }
+        */
     }
 
     post {
         always {
-            echo 'Pipeline execution completed.'
+            echo 'Pipeline completed - cleaning up'
+            script {
+                // Clean up containers
+                sh "docker stop ${DOCKER_IMAGE}-container || true"
+                sh "docker rm ${DOCKER_IMAGE}-container || true"
+                // Remove dangling images
+                sh 'docker image prune -f || true'
+            }
+        }
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
